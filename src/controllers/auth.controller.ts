@@ -9,11 +9,6 @@ interface TokenPayload {
     id: string;
 }
 
-// Extender Request para incluir userId
-interface AuthenticatedRequest extends Request {
-    userId?: string;
-}
-
 if (!process.env.SECRET_KEY) {
     throw new Error('SECRET_KEY must be defined in environment variables');
 }
@@ -82,7 +77,7 @@ export const registerUser = async (req: Request, res: Response): Promise<void> =
 };
 
 export const verifyToken = (
-    req: AuthenticatedRequest,
+    req: Request,
     res: Response,
     next: NextFunction
 ): void => {

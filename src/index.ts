@@ -6,9 +6,9 @@ import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
-// Middlewares
+// Middlewares globales
 app.use(cors());
 app.use(express.json());
 
