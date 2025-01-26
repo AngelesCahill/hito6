@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { loginUser, registerUser, verifyToken } from '../controllers/auth.controller.js';
+import { loginUser, registerUser, verifyToken, logoutUser } from '../controllers/auth.controller.js';
 import { Request, Response } from 'express';
 
 const router = Router();
@@ -58,6 +58,22 @@ router.get('/verify', verifyToken, (_req: Request, res: Response) => {
     res.status(200).json({ message: 'Token válido' });
 });
 
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Cerrar sesión
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout exitoso
+ *       401:
+ *         description: No autorizado
+ */
+router.post('/logout', verifyToken, logoutUser);
+
 export default router; 
 
 /*
@@ -73,5 +89,9 @@ curl -X POST http://localhost:4000/api/auth/login \
 
 # Verificar Token
 curl -X GET http://localhost:4000/api/auth/verify \
-  -H "Authorization: Bearer tu_token_aqui" 
+  -H "Authorization: Bearer tu_token_aqui"
+
+# Logout
+curl -X POST http://localhost:4000/api/auth/logout \
+  -H "Authorization: Bearer tu_token_aqui"
 */

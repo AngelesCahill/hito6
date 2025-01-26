@@ -83,7 +83,7 @@ export class Project extends Model<ProjectAttributes> {
     declare description: string;
 
     @AllowNull(false)
-    @Column(DataType.DATE)
+    @Column(DataType.STRING)
     declare image: string;
 
     @ForeignKey(() => User)

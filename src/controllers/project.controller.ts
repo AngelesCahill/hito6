@@ -47,19 +47,28 @@ export const findAllProjectsByUserId = async (req: Request, res: Response): Prom
 
 export const createProject = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { title, description, img } = req.body;
-        const userId = req.userId; // Usar el ID del usuario autenticado
+        const { title, description, image } = req.body;
+        const userId = req.userId; // Viene del token
 
         if (!userId) {
             res.status(401).json({ message: 'Usuario no autenticado' });
             return;
         }
 
+        // Verificar que el usuario existe
+        const user = await User.findByPk(userId);
+        if (!user) {
+            res.status(404).json({ message: 'Usuario no encontrado' });
+            return;
+        }
+
+        console.log('Creating project with userId:', userId); // Para debug
+
         const newProject = await Project.create({ 
             title, 
             description, 
-            image: img,
-            userId // Asignar el userId del token
+            image,
+            userId: userId // Asegurarnos de que se asigna correctamente
         });
 
         // Cargar el proyecto con la información del usuario
@@ -72,8 +81,12 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
 
         res.status(201).json(projectWithUser);
     } catch (error: unknown) {
+        console.error('Error completo:', error); // Para debug
         if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
+            res.status(500).json({ 
+                message: error.message,
+                error: error // Incluir el error completo para debug
+            });
         } else {
             res.status(500).json({ message: 'An unknown error occurred' });
         }
@@ -83,11 +96,21 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
 export const updateProject = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const userId = req.userId; // Usar el ID del usuario autenticado
-        const { title, description, img } = req.body;
+        const userId = req.userId;
+        const { title, description, image } = req.body;
 
         if (!userId) {
             res.status(401).json({ message: 'Usuario no autenticado' });
+            return;
+        }
+
+        // Validar formato UUID
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(id)) {
+            res.status(400).json({ 
+                message: 'ID de proyecto inválido. Debe ser un UUID válido.',
+                example: '123e4567-e89b-12d3-a456-426614174000'
+            });
             return;
         }
 
@@ -104,14 +127,12 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        // Actualizar el proyecto
         await project.update({ 
             title, 
             description, 
-            image: img 
+            image
         });
 
-        // Cargar el proyecto actualizado con la información del usuario
         const updatedProject = await Project.findByPk(project.id, {
             include: [{
                 model: User,
@@ -121,8 +142,12 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
 
         res.status(200).json(updatedProject);
     } catch (error: unknown) {
+        console.error('Error updating project:', error);
         if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
+            res.status(500).json({ 
+                message: error.message,
+                error: error
+            });
         } else {
             res.status(500).json({ message: 'An unknown error occurred' });
         }

@@ -15,6 +15,9 @@ if (!process.env.SECRET_KEY) {
 
 const secretKey = process.env.SECRET_KEY as string;
 
+// Set para almacenar tokens invalidados
+const invalidatedTokens = new Set<string>();
+
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const { email, password } = req.body;
@@ -88,7 +91,6 @@ export const verifyToken = (
             return;
         }
 
-        // Verificar que el header comience con "Bearer "
         if (!authHeader.startsWith('Bearer ')) {
             res.status(403).json({ message: 'Formato de token inválido' });
             return;
@@ -97,6 +99,12 @@ export const verifyToken = (
         const token = authHeader.split(' ')[1];
         if (!token) {
             res.status(403).json({ message: 'No se ha proporcionado el token' });
+            return;
+        }
+
+        // Verificar si el token está en la lista negra
+        if (invalidatedTokens.has(token)) {
+            res.status(401).json({ message: 'Token invalidado' });
             return;
         }
 
@@ -115,5 +123,32 @@ export const verifyToken = (
         }
     } catch (error) {
         res.status(500).json({ message: 'Error en la autenticación' });
+    }
+};
+
+export const logoutUser = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const authHeader = req.headers['authorization'];
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            // Añadir el token a la lista negra
+            invalidatedTokens.add(token);
+
+            // Opcional: Limpiar tokens expirados de la lista negra
+            setTimeout(() => {
+                invalidatedTokens.delete(token);
+            }, 3600000); // 1 hora
+        }
+
+        res.status(200).json({ 
+            message: 'Logout exitoso',
+            info: 'Token invalidado exitosamente'
+        });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            res.status(500).json({ message: error.message });
+        } else {
+            res.status(500).json({ message: 'An unknown error occurred' });
+        }
     }
 };

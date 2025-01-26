@@ -55,13 +55,13 @@ router.get('/my-projects', verifyToken, findAllProjectsByUserId);
  *             required:
  *               - title
  *               - description
- *               - img
+ *               - image
  *             properties:
  *               title:
  *                 type: string
  *               description:
  *                 type: string
- *               img:
+ *               image:
  *                 type: string
  */
 router.post('/', verifyToken, createProject);
@@ -131,7 +131,7 @@ curl -X POST http://localhost:4000/api/projects \
   -d '{
     "title": "Mi Proyecto",
     "description": "Descripción del proyecto",
-    "img": "url_de_la_imagen"
+    "image": "url_de_la_imagen"
   }'
 
 # Actualizar proyecto
