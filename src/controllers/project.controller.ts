@@ -1,5 +1,5 @@
-import { Project } from "../models/schema";
-import { User } from "../models/schema";
+import { Project } from "../models/schema.js";
+import { User } from "../models/schema.js";
 import { Request, Response } from 'express';
 
 // Extender la interfaz Request
@@ -7,9 +7,14 @@ interface AuthenticatedRequest extends Request {
     userId?: string;
 }
 
-export const getProjects = async (req: Request, res: Response) => {    
+export const getProjects = async (req: Request, res: Response): Promise<void> => {    
     try {
-        const projects = await Project.findAll();
+        const projects = await Project.findAll({
+            include: [{
+                model: User,
+                attributes: ['id', 'name', 'email'] // Solo incluir estos campos del usuario
+            }]
+        });
         res.status(200).json(projects);
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -20,10 +25,16 @@ export const getProjects = async (req: Request, res: Response) => {
     }
 };
 
-export const findAllProjectsByUserId = async (req: Request, res: Response) => {
+export const findAllProjectsByUserId = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { userId } = req.params;
-        const projects = await Project.findAll({ where: { userId } });
+        const userId = req.userId; // Usar el ID del usuario autenticado
+        const projects = await Project.findAll({ 
+            where: { userId },
+            include: [{
+                model: User,
+                attributes: ['id', 'name', 'email']
+            }]
+        });
         res.status(200).json(projects);
     } catch (error: unknown) {
         if (error instanceof Error) {
@@ -34,58 +45,53 @@ export const findAllProjectsByUserId = async (req: Request, res: Response) => {
     }
 };
 
-export const createProject = async (req: AuthenticatedRequest, res: Response) => {
+export const createProject = async (req: Request, res: Response): Promise<void> => {
     try {
         const { title, description, img } = req.body;
-        const userId = req.userId;
+        const userId = req.userId; // Usar el ID del usuario autenticado
 
-        console.log('Request body:', req.body);
-        console.log('User ID from token:', userId);
-
-        // Verificar que tenemos un userId válido
         if (!userId) {
-            return res.status(401).json({ 
-                message: 'No se ha proporcionado un token válido' 
-            });
+            res.status(401).json({ message: 'Usuario no autenticado' });
+            return;
         }
 
-        // crear el proyecto
         const newProject = await Project.create({ 
             title, 
             description, 
             image: img,
-            userId: userId 
+            userId // Asignar el userId del token
         });
 
-        console.log('Created project:', newProject.toJSON());
+        // Cargar el proyecto con la información del usuario
+        const projectWithUser = await Project.findByPk(newProject.id, {
+            include: [{
+                model: User,
+                attributes: ['id', 'name', 'email']
+            }]
+        });
 
-        // Verificar que el proyecto se creó correctamente
-        const savedProject = await Project.findByPk(newProject.id);
-        console.log('Saved project:', savedProject ? savedProject.toJSON() : 'Not found');
-
-        res.status(201).json(newProject);
+        res.status(201).json(projectWithUser);
     } catch (error: unknown) {
-        console.error('Error creating project:', error);
         if (error instanceof Error) {
-            res.status(500).json({ 
-                message: error.message,
-                error: error
-            });
+            res.status(500).json({ message: error.message });
         } else {
-            res.status(500).json({ 
-                message: 'An unknown error occurred'
-            });
+            res.status(500).json({ message: 'An unknown error occurred' });
         }
     }
 };      
 
-export const updateProject = async (req: AuthenticatedRequest, res: Response) => {
+export const updateProject = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { id } = req.params;  // ID del proyecto
-        const userId = req.userId;   // ID del usuario del token
+        const { id } = req.params;
+        const userId = req.userId; // Usar el ID del usuario autenticado
         const { title, description, img } = req.body;
 
-        // Buscar el proyecto y verificar que pertenezca al usuario
+        if (!userId) {
+            res.status(401).json({ message: 'Usuario no autenticado' });
+            return;
+        }
+
+        // Verificar que el proyecto pertenezca al usuario
         const project = await Project.findOne({
             where: { 
                 id,
@@ -94,9 +100,8 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response) =>
         });
 
         if (!project) {
-            return res.status(404).json({ 
-                message: 'Proyecto no encontrado o no pertenece al usuario' 
-            });
+            res.status(404).json({ message: 'Proyecto no encontrado o no autorizado' });
+            return;
         }
 
         // Actualizar el proyecto
@@ -106,7 +111,15 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response) =>
             image: img 
         });
 
-        res.status(200).json(project);
+        // Cargar el proyecto actualizado con la información del usuario
+        const updatedProject = await Project.findByPk(project.id, {
+            include: [{
+                model: User,
+                attributes: ['id', 'name', 'email']
+            }]
+        });
+
+        res.status(200).json(updatedProject);
     } catch (error: unknown) {
         if (error instanceof Error) {
             res.status(500).json({ message: error.message });
@@ -116,16 +129,31 @@ export const updateProject = async (req: AuthenticatedRequest, res: Response) =>
     }
 };      
 
-export const deleteProject = async (req: Request, res: Response) => {  
+export const deleteProject = async (req: Request, res: Response): Promise<void> => {  
     try {
         const { id } = req.params;
-        const project = await Project.findByPk(id);
-        if (project) {
-            await project.destroy();
-            res.status(200).json({ message: 'Se ha eliminada el proyecto con id: ' + id });
-        } else {
-            res.status(404).json({ message: 'Proyecto no encontrado' });
+        const userId = req.userId; // Usar el ID del usuario autenticado
+
+        if (!userId) {
+            res.status(401).json({ message: 'Usuario no autenticado' });
+            return;
         }
+
+        // Verificar que el proyecto pertenezca al usuario
+        const project = await Project.findOne({
+            where: { 
+                id,
+                userId 
+            }
+        });
+
+        if (!project) {
+            res.status(404).json({ message: 'Proyecto no encontrado o no autorizado' });
+            return;
+        }
+
+        await project.destroy();
+        res.status(200).json({ message: 'Proyecto eliminado correctamente' });
     } catch (error: unknown) {
         if (error instanceof Error) {
             res.status(500).json({ message: error.message });
