@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Código Ark - Gestión de Proyectos</title>
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">Gestión de Proyectos</a>
+            <div class="nav-buttons">
+                <button id="loginBtn" class="nav-btn btn-login">Iniciar Sesión</button>
+                <button id="registerBtn" class="nav-btn btn-register">Registrarse</button>
+                <button id="logoutBtn" class="nav-btn btn-logout">Cerrar Sesión</button>
+                <button id="chatBtn" class="nav-btn btn-chat" style="display: none;" onclick="goToChat()">Ir al Chat</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Modal de Login -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Iniciar Sesión</h2>
+            <form id="loginForm" class="modal-form">
+                <input type="email" id="loginEmail" placeholder="Email" required>
+                <input type="password" id="loginPassword" placeholder="Contraseña" required>
+                <button type="submit">Iniciar Sesión</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Registro -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Registrarse</h2>
+            <form id="registerForm" class="modal-form">
+                <input type="text" id="registerName" placeholder="Nombre" required>
+                <input type="email" id="registerEmail" placeholder="Email" required>
+                <input type="password" id="registerPassword" placeholder="Contraseña" required>
+                <button type="submit">Registrarse</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Sección de mensajería -->
+
+
+        <!-- Sección de gestión de usuarios y proyectos -->
+
+        <h1>Gestión de Usuarios y Proyectos</h1>
+        <div class="users-table">
+            <h2>Usuarios Registrados</h2>
+            <table id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Actualizar</th>
+                        <th>Eliminar</th>
+                        <th>Proyectos</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <!-- Los usuarios se cargarán aquí dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Nueva sección para la tabla de proyectos -->
+        <div id="projectsSection" class="projects-table" style="display: none; margin-top: 2rem;">
+            <div class="projects-header">
+                <h2>Proyectos del Usuario <span id="projectsUserId"></span></h2>
+                <button id="createProjectBtn" class="btn btn-create">Crear Proyecto</button>
+            </div>
+            <table id="projectsTable">
+                <thead>
+                    <tr>
+                        <th>Título</th>
+                        <th>Descripción</th>
+                        <th>Autor</th>
+                        <th>Actualizar</th>
+                        <th>Eliminar</th>
+                        <th>Vista</th>
+                    </tr>
+                </thead>
+                <tbody id="projectsTableBody">
+                    <!-- Los proyectos se cargarán aquí dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Después de la tabla de proyectos -->
+        <div id="projectCards" class="project-cards-container">
+            <!-- Las cards de proyectos se mostrarán aquí -->
+        </div>
+    </div>
+    
+    <!-- Modal para actualizar usuario -->
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Actualizar Usuario</h2>
+            <form id="updateForm" class="modal-form">
+                <input type="text" id="updateName" placeholder="Actualizar nombre">
+                <input type="email" id="updateEmail" placeholder="Actualizar email">
+                <button type="submit">Actualizar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para crear proyecto -->
+    <div id="createProjectModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Crear Nuevo Proyecto</h2>
+            <form id="createProjectForm" class="modal-form">
+                <input type="text" id="projectTitle" placeholder="Título del proyecto" required>
+                <input type="text" id="projectDescription" placeholder="Descripción del proyecto" required>
+                <div class="file-input-container">
+                    <input type="file" id="projectImage" accept="image/*" class="file-input">
+                    <div class="image-preview" id="imagePreview"></div>
+                </div>
+                <button type="submit">Crear Proyecto</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para actualizar proyecto -->
+    <div id="updateProjectModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Actualizar Proyecto</h2>
+            <form id="updateProjectForm" class="modal-form">
+                <input type="text" id="updateProjectTitle" placeholder="Título del proyecto" required>
+                <input type="text" id="updateProjectDescription" placeholder="Descripción del proyecto" required>
+                <div class="file-input-container">
+                    <input type="file" id="updateProjectImage" accept="image/*" class="file-input">
+                    <div class="image-preview" id="updateImagePreview"></div>
+                </div>
+                <button type="submit">Actualizar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="home.script.js"></script>
+</body>
+</html> 

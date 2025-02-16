@@ -1,34 +1,43 @@
-import express from 'express';
-import cors from 'cors';
-import 'dotenv/config';
-import { sequelize } from './config/connection.db';
-import authRoutes from './routes/auth.routes.js';
-import userRoutes from './routes/user.routes.js';
-import projectRoutes from './routes/project.routes.js';
+import app from './app';
+import sequelize from './configDb/connectionDb';
+import dotenv from 'dotenv';
+import http from 'http';
+import { Server } from 'socket.io';
 
-const app = express();
-const PORT = process.env.PORT || 4000;
+dotenv.config();
 
-// Middlewares globales
-app.use(cors());
-app.use(express.json());
+const PORT = process.env.PORT || 3000;
 
-// Rutas
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/projects', projectRoutes);
+const server = http.createServer(app);
+const io = new Server(server);
 
-const main = async () => {
+io.on('connection', (socket) => {
+    console.log('A user connected');
+
+    socket.on('chat message', (msg) => {
+        io.emit('chat message', msg); // Emitir el mensaje a todos los clientes
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+
+async function main() {
     try {
+        // Sincronizar base de datos
         await sequelize.authenticate();
-        await sequelize.sync({alter: true});
-        console.log('Connection has been established successfully.');
-        app.listen(PORT, () => {
+        await sequelize.sync({ alter: true });
+        console.log('Database connected and synchronized');
+
+        // Iniciar servidor
+        server.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
-    } catch (error) {   
-        console.error(error);
+    } catch (error) {
+        console.error('Unable to start server:', error);
+        process.exit(1);
     }
-};
+}
 
-main();
+main(); 

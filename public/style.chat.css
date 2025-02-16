@@ -1,0 +1,9 @@
+#chatMessages {
+    height: 80px;
+    width: 25%;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+}

@@ -1,189 +1,148 @@
-import { Project } from "../models/schema.js";
-import { User } from "../models/schema.js";
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import Project from '../models/project.model';
+import { HttpError } from '../middlewares/httpErrors';
+import { AuthRequest } from '../middlewares/jsonwebtoken';
+import multer from 'multer';
+import path from 'path';
 
-// Extender la interfaz Request
-interface AuthenticatedRequest extends Request {
-    userId?: string;
+// Extender la interfaz AuthRequest para incluir el archivo
+interface MulterRequest extends AuthRequest {
+    file?: Express.Multer.File;
 }
 
-export const getProjects = async (req: Request, res: Response): Promise<void> => {    
-    try {
-        const projects = await Project.findAll({
-            include: [{
-                model: User,
-                attributes: ['id', 'name', 'email'] // Solo incluir estos campos del usuario
-            }]
-        });
-        res.status(200).json(projects);
-    } catch (error: unknown) {
-        if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
+// Configurar multer para la carga de imágenes
+const storage = multer.diskStorage({
+    destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+        cb(null, 'public/uploads/');
+    },
+    filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
+});
+
+export const upload = multer({ 
+    storage: storage,
+    fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
         } else {
-            res.status(500).json({ message: 'An unknown error occurred' });
+            cb(new Error('No es una imagen válida'));
         }
+    }
+});
+
+export const getProjects = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const projects = await Project.findAll();
+        res.json(projects);
+    } catch (error) {
+        next(error);
     }
 };
 
-export const findAllProjectsByUserId = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const userId = req.userId; // Usar el ID del usuario autenticado
-        const projects = await Project.findAll({ 
-            where: { userId },
-            include: [{
-                model: User,
-                attributes: ['id', 'name', 'email']
-            }]
-        });
-        res.status(200).json(projects);
-    } catch (error: unknown) {
-        if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
-        } else {
-            res.status(500).json({ message: 'An unknown error occurred' });
-        }
-    }
-};
-
-export const createProject = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { title, description, image } = req.body;
-        const userId = req.userId; // Viene del token
-
-        if (!userId) {
-            res.status(401).json({ message: 'Usuario no autenticado' });
-            return;
-        }
-
-        // Verificar que el usuario existe
-        const user = await User.findByPk(userId);
-        if (!user) {
-            res.status(404).json({ message: 'Usuario no encontrado' });
-            return;
-        }
-
-        console.log('Creating project with userId:', userId); // Para debug
-
-        const newProject = await Project.create({ 
-            title, 
-            description, 
-            image,
-            userId: userId // Asegurarnos de que se asigna correctamente
-        });
-
-        // Cargar el proyecto con la información del usuario
-        const projectWithUser = await Project.findByPk(newProject.id, {
-            include: [{
-                model: User,
-                attributes: ['id', 'name', 'email']
-            }]
-        });
-
-        res.status(201).json(projectWithUser);
-    } catch (error: unknown) {
-        console.error('Error completo:', error); // Para debug
-        if (error instanceof Error) {
-            res.status(500).json({ 
-                message: error.message,
-                error: error // Incluir el error completo para debug
-            });
-        } else {
-            res.status(500).json({ message: 'An unknown error occurred' });
-        }
-    }
-};      
-
-export const updateProject = async (req: Request, res: Response): Promise<void> => {
+export const getProjectById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const userId = req.userId;
-        const { title, description, image } = req.body;
-
-        if (!userId) {
-            res.status(401).json({ message: 'Usuario no autenticado' });
-            return;
-        }
-
-        // Validar formato UUID
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        if (!uuidRegex.test(id)) {
-            res.status(400).json({ 
-                message: 'ID de proyecto inválido. Debe ser un UUID válido.',
-                example: '123e4567-e89b-12d3-a456-426614174000'
-            });
-            return;
-        }
-
-        // Verificar que el proyecto pertenezca al usuario
-        const project = await Project.findOne({
-            where: { 
-                id,
-                userId 
-            }
-        });
+        const project = await Project.findByPk(id);
 
         if (!project) {
-            res.status(404).json({ message: 'Proyecto no encontrado o no autorizado' });
-            return;
+            throw new HttpError('Project not found', 404);
+        }
+
+        res.json(project);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const createProject = async (req: MulterRequest, res: Response, next: NextFunction) => {
+    try {
+        const { title, description } = req.body;
+        const userId = req.user?.id;
+        const image = req.file?.filename;
+
+        if (!userId) {
+            throw new HttpError('User not authenticated', 401);
+        }
+
+        const project = await Project.create({
+            title,
+            description,
+            image: image ? `/uploads/${image}` : null,
+            userId
+        });
+
+        res.status(201).json(project);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateProject = async (req: MulterRequest, res: Response, next: NextFunction) => {
+    try {
+        const { id } = req.params;
+        const { title, description } = req.body;
+        const userId = req.user?.id;
+        const image = req.file?.filename;
+
+        const project = await Project.findByPk(id);
+        if (!project) {
+            throw new HttpError('Project not found', 404);
+        }
+
+        if (project.userId !== userId) {
+            throw new HttpError('Not authorized to update this project', 403);
         }
 
         await project.update({ 
             title, 
-            description, 
-            image
+            description,
+            image: image ? `/uploads/${image}` : project.image // Mantener la imagen anterior si no se sube una nueva
         });
 
-        const updatedProject = await Project.findByPk(project.id, {
-            include: [{
-                model: User,
-                attributes: ['id', 'name', 'email']
-            }]
+        res.json({ 
+            message: 'Project updated successfully',
+            project
         });
-
-        res.status(200).json(updatedProject);
-    } catch (error: unknown) {
-        console.error('Error updating project:', error);
-        if (error instanceof Error) {
-            res.status(500).json({ 
-                message: error.message,
-                error: error
-            });
-        } else {
-            res.status(500).json({ message: 'An unknown error occurred' });
-        }
+    } catch (error) {
+        next(error);
     }
-};      
+};
 
-export const deleteProject = async (req: Request, res: Response): Promise<void> => {  
+export const deleteProject = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const userId = req.userId; // Usar el ID del usuario autenticado
+        const userId = req.user?.id;
 
-        if (!userId) {
-            res.status(401).json({ message: 'Usuario no autenticado' });
-            return;
+        const project = await Project.findByPk(id);
+        if (!project) {
+            throw new HttpError('Project not found', 404);
         }
 
-        // Verificar que el proyecto pertenezca al usuario
-        const project = await Project.findOne({
-            where: { 
-                id,
-                userId 
-            }
-        });
-
-        if (!project) {
-            res.status(404).json({ message: 'Proyecto no encontrado o no autorizado' });
-            return;
+        if (project.userId !== userId) {
+            throw new HttpError('Not authorized to delete this project', 403);
         }
 
         await project.destroy();
-        res.status(200).json({ message: 'Proyecto eliminado correctamente' });
-    } catch (error: unknown) {
-        if (error instanceof Error) {
-            res.status(500).json({ message: error.message });
-        } else {
-            res.status(500).json({ message: 'An unknown error occurred' });
-        }
+        res.json({ message: 'Project deleted successfully' });
+    } catch (error) {
+        next(error);
     }
 };
+
+export const getProjectsByUserId = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { userId } = req.params;
+        
+        const projects = await Project.findAll({
+            where: { userId: userId },
+            attributes: ['id', 'title', 'description', 'image'],
+            order: [['createdAt', 'DESC']]
+        });
+
+        res.json(projects);
+    } catch (error) {
+        console.error('Error getting user projects:', error);
+        next(new HttpError('Error getting user projects', 500));
+    }
+}; 
