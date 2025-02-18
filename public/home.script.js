@@ -222,7 +222,7 @@ async function updateProject(projectId) {
             preview.innerHTML = '';
         }
 
-        // Mostrar el modal
+        // Mostrar la modal
         document.getElementById('updateProjectModal').style.display = 'block';
     } catch (error) {
         console.error('Error:', error);
@@ -289,7 +289,7 @@ document.getElementById('updateProjectForm').onsubmit = async (e) => {
     }
 };
 
-// Agregar el manejador de cierre para el nuevo modal
+// Agregar el manejador de cierre para nueva modal
 document.querySelectorAll('.close').forEach(closeBtn => {
     closeBtn.onclick = function() {
         this.closest('.modal').style.display = 'none';
@@ -558,8 +558,8 @@ function goToChat() {
 }
 
 function loginUser() {
-    const inputUserName = document.getElementById('userNameInput'); // Asegúrate de que este ID sea correcto
-    const userName = inputUserName.value; // Obtener el valor del campo de entrada
+    const inputUserName = document.getElementById('userNameInput'); 
+    const userName = inputUserName.value; 
 
     if (userName) {
         localStorage.setItem('name', userName); // Almacenar el nombre en localStorage
